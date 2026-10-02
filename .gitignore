@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+clean/
+final/
+figures/
+.venv/
+.DS_Store
