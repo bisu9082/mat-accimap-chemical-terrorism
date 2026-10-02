@@ -1,6 +1,9 @@
-numpy>=1.24
+# Pinned to the environment that produced every number in the paper.
+# Tree-ensemble AUCs move by up to 0.011 across scikit-learn versions, so
+# these are exact pins, not minimums. Verified on Python 3.13.2.
+numpy==2.5.3
 pandas>=2.0
-scikit-learn>=1.3
+scikit-learn==1.9.1
 scipy>=1.11
 matplotlib>=3.7
 gower>=0.1.2

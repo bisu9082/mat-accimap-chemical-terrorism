@@ -48,7 +48,7 @@ PAL = {"c1": "#C94F4A", "c2": "#E8943A", "c3": "#4AACB0", "c4": "#5B8DB8",
 FS_LABEL, FS_AXIS, FS_TICK, FS_BAR, FS_PANEL = 26, 16, 15, 10, 28
 plt.rcParams.update({"font.family": "DejaVu Sans", "axes.spines.top": False,
                      "axes.spines.right": False, "axes.grid": True,
-                     "grid.alpha": 0.3, "axes.facecolor": "#F8F6F2",
+                     "grid.alpha": 0.3, "axes.facecolor": "white",
                      "figure.facecolor": "white", "savefig.facecolor": "white"})
 def panel(ax, L):
     ax.text(-0.10, 1.18, L, transform=ax.transAxes, fontsize=FS_PANEL,
@@ -65,7 +65,7 @@ LAYERS = [("M1", "Agent and materiel", ["v01_agent_class", "v02_delivery_complex
            "v14_region_instability"], "c3"),
           ("M5", "Organisational capability", ["v16_group_sophistication",
            "v17_training_evidence", "v18_international_links"], "c5"),
-          ("M6", "Institutional linkage", ["v19_state_sponsorship", "v20_cross_border",
+          ("M6", "Institutional and transnational linkage", ["v19_state_sponsorship", "v20_cross_border",
            "v21_ideological_motivation"], "c4"),
           ("M7", "Intent and signalling", ["v22_mass_casualty_intent",
            "v23_propaganda_intent", "v24_wmd_signaling"], "grey")]
@@ -310,29 +310,109 @@ sens = {v: round(q({v: 1}) - q({v: 0}), 4) for v in NICE}
 for v, dd in sorted(sens.items(), key=lambda t: -t[1]):
     say(f"  {NICE[v][1]} {v:<30}P1={q({v:1}):.4f}  dP={dd:+.4f}")
 
-fig, ax = plt.subplots(figsize=(20, 10)); ax.set_xlim(0, 1); ax.set_ylim(0.05, 1.0)
+# ---- fig4: DAG. Circles must render round, so ellipse height is scaled by
+# ---- the axes' own unit-per-inch ratio. Text colour follows fill luminance.
+from matplotlib.patches import Ellipse
+FIG_W, FIG_H = 20.0, 11.6
+AX_H = 0.90                       # axes occupies the lower 90%, title above
+XLO, XHI, YLO, YHI = 0.0, 1.0, 0.02, 1.06
+ASPECT = ((YHI - YLO) / (FIG_H * AX_H)) / ((XHI - XLO) / FIG_W)
+
+def ink(hexcol):
+    r, g, b = (int(hexcol[k:k+2], 16) / 255 for k in (1, 3, 5))
+    lin = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    return "white" if L < 0.42 else "#141414"
+
+fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+ax.set_position([0.0, 0.0, 1.0, AX_H])      # exact, so shrink maths is exact
+ax.set_xlim(XLO, XHI); ax.set_ylim(YLO, YHI)
 ax.axis("off"); ax.set_facecolor("white")
+
+RX_IN, RX_OUT = 0.066, 0.078
+PT_IN, PT_OUT = RX_IN * FIG_W * 72, RX_OUT * FIG_W * 72
 for s_, t_ in E:
     x1, y1 = POS[s_]; x2, y2 = POS[t_]
-    ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
-                arrowprops=dict(arrowstyle="-|>", color=PAL["dark"], lw=1.9,
-                                alpha=0.55, shrinkA=30, shrinkB=32,
-                                connectionstyle="arc3,rad=0.06"))
-for n_, (x, y) in POS.items():
+    ax.annotate("", xy=(x2, y2), xytext=(x1, y1), zorder=1,
+                arrowprops=dict(arrowstyle="-|>,head_width=0.45,head_length=0.9",
+                                color="#5A5A5A", lw=3.2, alpha=0.8,
+                                shrinkA=PT_IN + 3,
+                                shrinkB=(PT_OUT if t_ == "lethality" else PT_IN) + 5,
+                                connectionstyle="arc3,rad=0.05"))
+for n_, (nx, ny) in POS.items():
     out = n_ == "lethality"
     col = PAL["dark"] if out else PAL[NICE[n_][2]]
-    ax.add_patch(plt.Circle((x, y), 0.075 if out else 0.062, fc=col, ec="white",
-                            lw=2.6, zorder=3, alpha=0.94))
-    txt = f"LETHALITY\n$P$ = {base:.3f}" if out else NICE[n_][0]
-    ax.text(x, y, txt, ha="center", va="center", fontsize=FS_TICK - 4,
-            color="white", fontweight="bold" if out else "normal", zorder=4)
-    if not out:
-        ax.text(x, y + 0.095, NICE[n_][1], ha="center", fontsize=FS_BAR + 3,
-                color=col, fontweight="bold")
-ax.set_title("MAT Bayesian network: 8 nodes, 12 edges, BDeu "
-             "($\\alpha = 5$)", fontsize=FS_LABEL - 2, pad=14)
-fig.savefig(f"{A.out}/fig4_bn_dag.png", dpi=200, bbox_inches="tight")
+    rx = RX_OUT if out else RX_IN
+    ax.add_patch(Ellipse((nx, ny), width=2 * rx, height=2 * rx * ASPECT,
+                         fc=col, ec="white", lw=3.0, zorder=3))
+    tc = ink(col)
+    if out:
+        ax.text(nx, ny, f"LETHALITY\n$P$ = {base:.3f}", ha="center", va="center",
+                fontsize=19, color="white", fontweight="bold", zorder=4,
+                linespacing=1.45)
+    else:
+        ax.text(nx, ny, NICE[n_][0], ha="center", va="center", fontsize=18,
+                color=tc, fontweight="bold", zorder=4, linespacing=1.3)
+        ax.text(nx, ny + rx * ASPECT + 0.035, NICE[n_][1], ha="center",
+                va="bottom", fontsize=19, color=col, fontweight="bold", zorder=4)
+fig.suptitle("MAT Bayesian network: 8 nodes, 12 edges, BDeu ($\\alpha = 5$)",
+             fontsize=30, y=0.975)
+fig.savefig(f"{A.out}/fig4_bn_dag.png", dpi=200, bbox_inches="tight",
+            facecolor="white")
 plt.close(); say("-> fig4_bn_dag.png")
+
+# ---- fig1: MAT architecture. Ghost layers must stay visibly subordinate but
+# ---- legible; baseline is taken from the BN fitted above, never hardcoded.
+from matplotlib.patches import FancyBboxPatch
+GHOST_EC, GHOST_TX = "#9AA0A6", "#5F6368"
+fig, ax = plt.subplots(figsize=(16, 11.6))
+ax.set_xlim(0, 10); ax.set_ylim(0, 11.9); ax.axis("off")
+ax.set_facecolor("white"); fig.patch.set_facecolor("white")
+ax.grid(False)
+
+GHOST = [("Government and legislature", "L1"),
+         ("Regulatory bodies", "L2"),
+         ("Organisational management and control", "L3–L5")]
+yy = 11.2
+for name, code in GHOST:
+    ax.add_patch(FancyBboxPatch((0.6, yy - 0.52), 8.8, 0.72,
+                                boxstyle="round,pad=0.02,rounding_size=0.12",
+                                fc="#F2F3F4", ec=GHOST_EC, lw=2.4, ls="--",
+                                zorder=2))
+    ax.text(0.95, yy - 0.16, code, fontsize=19, color=GHOST_TX,
+            fontweight="bold", va="center", zorder=3)
+    ax.text(2.25, yy - 0.16, name, fontsize=19, color=GHOST_TX, va="center",
+            zorder=3)
+    yy -= 0.90
+ax.plot([0.6, 9.4], [yy + 0.06, yy + 0.06], ls=":", lw=2.4, color=GHOST_EC)
+ax.text(5.0, yy - 0.34, "not recorded in incident databases at event resolution",
+        fontsize=18, color=GHOST_TX, ha="center", style="italic", va="center")
+
+yy -= 1.08
+for code, name, vs, ckey in LAYERS:
+    col = PAL[ckey]
+    ax.add_patch(FancyBboxPatch((0.6, yy - 0.60), 8.8, 0.80,
+                                boxstyle="round,pad=0.02,rounding_size=0.12",
+                                fc=col, ec="white", lw=2.6, zorder=3))
+    tc = ink(col)
+    ax.text(0.95, yy - 0.20, code, fontsize=21, color=tc, fontweight="bold",
+            va="center", zorder=4)
+    ax.text(2.25, yy - 0.20, name, fontsize=20, color=tc, va="center", zorder=4)
+    ax.text(9.25, yy - 0.20, f"{len(vs)} var", fontsize=17, color=tc,
+            fontweight="bold", va="center", ha="right", zorder=4)
+    yy -= 1.00
+
+ax.add_patch(FancyBboxPatch((1.9, yy - 0.62), 6.2, 0.82,
+                            boxstyle="round,pad=0.02,rounding_size=0.12",
+                            fc=PAL["dark"], ec="white", lw=2.6, zorder=3))
+ax.text(5.0, yy - 0.21, f"LETHALITY OUTCOME    $P$ = {base:.3f} baseline",
+        fontsize=19, color="white", fontweight="bold", ha="center",
+        va="center", zorder=4)
+ax.set_title("Modified AcciMap for Terrorism (MAT): coded layers and the "
+             "uncoded control layers above them", fontsize=25, pad=18)
+fig.savefig(f"{A.out}/fig1_mat_architecture.png", dpi=200,
+            bbox_inches="tight", facecolor="white")
+plt.close(); say(f"-> fig1_mat_architecture.png (baseline {base:.4f} from live BN)")
 
 # ── fig5 two panels ────────────────────────────────────────────────────
 fig, axes = plt.subplots(1, 2, figsize=(20, 10))

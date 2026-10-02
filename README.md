@@ -2,8 +2,8 @@
 
 Data and code for:
 
-> **A Quantitative Systemic Framework for Chemical Terrorism Incident Analysis:
-> Integrating AcciMap, Cluster Analysis, Bayesian Networks, and Machine Learning**
+> **The Missing Upper Layers: A Quantitative Test of AcciMap on 203 Chemical
+> Terrorism Incidents, 1970-2021**
 > Cha, Shin, Yoo, Lee, Park, Jang & Kang. Submitted to *Safety Science*, 2026.
 > Corresponding author: Ku Kang (bisu9082@gmail.com)
 
@@ -59,8 +59,9 @@ data/
   mat_coded_public.csv      N = 203; v01–v24, lethality, year
 code/
   rerun_clean.py            clean 16-variable re-run: clustering, ML, BN
-  regen_final.py            all published figures + final reported values
-  finalize.py               supplementary figures and tables
+  regen_final_v2.py         fig1-fig5, figS1, figS3, figS4 + reported values
+  regen_s2_s5.py            figS2 correlation matrix, figS5 temporal validation
+  finalize.py               earlier supplementary figures and tables
   verify_acciterror.py      independent recomputation of reported values
   verify_v2.py              second-pass checks
   requirements.txt
@@ -87,12 +88,20 @@ internal dataset identically.
 ```bash
 pip install -r code/requirements.txt
 
-python3 code/rerun_clean.py  --csv data/mat_coded_public.csv --out clean
-python3 code/regen_final.py  --csv data/mat_coded_public.csv --out final
-python3 code/finalize.py     --csv data/mat_coded_public.csv --out figures
+python3 code/rerun_clean.py     --csv data/mat_coded_public.csv --out clean
+python3 code/regen_final_v2.py  --csv data/mat_coded_public.csv --out final
+python3 code/regen_s2_s5.py     --csv data/mat_coded_public.csv --out figs_s
 ```
 
-`pgmpy` is pinned to 1.1.0; the Bayesian-network API changed across versions.
+**Use the pinned versions.** `requirements.txt` pins `scikit-learn==1.9.1`
+and `numpy==2.5.3` because the tree-ensemble AUCs are not stable across
+scikit-learn releases: on 1.7.2 the same code and the same data give M1
+0.759 rather than 0.770 and M6 0.767 rather than 0.769, while the logistic
+baseline, the clustering, the bootstrap, the correlation matrix and the
+Bayesian network reproduce to four decimal places on both. The reported
+environment is Python 3.13.2 with scikit-learn 1.9.1, numpy 2.5.3 and
+pgmpy 1.1.0; `pgmpy` is pinned separately because its network API changed
+across versions.
 
 ### Expected values
 
